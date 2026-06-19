@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BSCASE</title>
+
+<style>
+body{
+    margin:0;
+    background:#111;
+    color:white;
+    font-family:Arial;
+    text-align:center;
+}
+
+.top{
+    background:#222;
+    padding:10px;
+}
+
+button{
+    background:#ff9800;
+    color:white;
+    border:none;
+    padding:10px;
+    margin:5px;
+    border-radius:10px;
+}
+
+.case{
+    background:#222;
+    margin:10px;
+    padding:10px;
+    border-radius:10px;
+}
+
+.inventory{
+    background:#1a1a1a;
+    margin:10px;
+    padding:10px;
+}
+
+.gold{
+    color:gold;
+}
+
+.legendary{
+    color:orange;
+}
+
+.epic{
+    color:#b300ff;
+}
+
+.rare{
+    color:#0099ff;
+}
+
+.common{
+    color:white;
+}
+</style>
+</head>
+<body>
+
+<h1>🎁 BSCASE</h1>
+
+<div class="top">
+💰 Голда:
+<span id="gold">10</span>
+<br>
+⭐ Рівень:
+<span id="level">1</span>
+</div>
+
+<h2>⛏ Клікер</h2>
+
+<button onclick="mineGold()">
+💰 Заробити голду
+</button>
+
+<p>
+За клік:
+<span id="clickPower">0.01</span>
+</p>
+
+<button onclick="upgradeClick()">
+⬆ Покращити (+0.005)
+Ціна: 1💰
+</button>
+
+<h2>🎁 Кейси</h2>
+
+<div class="case">
+🎁 Starter Case (5💰)
+<br>
+<button onclick="openCase(5)">
+Відкрити
+</button>
+</div>
+
+<div class="case">
+🎁 Bronze Case (10💰)
+<br>
+<button onclick="openCase(10)">
+Відкрити
+</button>
+</div>
+
+<div class="case">
+🎁 Silver Case (25💰)
+<br>
+<button onclick="openCase(25)">
+Відкрити
+</button>
+</div>
+
+<div class="case">
+🎁 Gold Case (50💰)
+<br>
+<button onclick="openCase(50)">
+Відкрити
+</button>
+</div>
+
+<div class="case">
+🎁 Diamond Case (100💰)
+<br>
+<button onclick="openCase(100)">
+Відкрити
+</button>
+</div>
+
+<h2>🎒 Інвентар</h2>
+
+<div id="inventory" class="inventory">
+Порожньо
+</div>
+
+<h2>🎟 Промокод</h2>
+
+<input id="promo" placeholder="Введи код">
+<button onclick="usePromo()">
+Активувати
+</button>
+
+<script>
+
+let gold =
+Number(localStorage.getItem("gold")) || 10;
+
+let level =
+Number(localStorage.getItem("level")) || 1;
+
+let clickPower =
+Number(localStorage.getItem("clickPower")) || 0.01;
+
+let inventory =
+JSON.parse(localStorage.getItem("inventory")) || [];
+
+function save(){
+localStorage.setItem("gold",gold);
+localStorage.setItem("level",level);
+localStorage.setItem("clickPower",clickPower);
+localStorage.setItem("inventory",
+JSON.stringify(inventory));
+update();
+}
+
+function update(){
+document.getElementById("gold").innerText =
+gold.toFixed(2);
+
+document.getElementById("level").innerText =
+level;
+
+document.getElementById("clickPower").innerText =
+clickPower.toFixed(3);
+
+let html="";
+
+inventory.forEach(item=>{
+html += "<div>"+item+"</div>";
+});
+
+if(html=="")
+html="Порожньо";
+
+document.getElementById("inventory").innerHTML =
+html;
+}
+
+function mineGold(){
+gold += clickPower;
+save();
+}
+
+function upgradeClick(){
+
+if(gold>=1){
+gold-=1;
+clickPower+=0.005;
+save();
+}
+}
+
+function openCase(price){
+
+if(gold<price){
+alert("Недостатньо голди!");
+return;
+}
+
+gold-=price;
+
+let rand=Math.random();
+
+let item;
+
+if(rand<0.56){
+
+item="💰 1 Голда";
+
+gold+=1;
+
+}else
+if(rand<0.80){
+
+item="🔫 Common AK47";
+
+}else
+if(rand<0.93){
+
+item="🔫 Rare M4";
+
+}else
+if(rand<0.99){
+
+item="🔪 Epic Knife";
+
+}else
+if(rand<0.99999){
+
+item="💎 Legendary Dragon";
+
+}else{
+
+item="💎 SECRET GOD ITEM";
+}
+
+inventory.push(item);
+
+save();
+
+alert("Випало: "+item);
+}
+
+function usePromo(){
+
+let code =
+document.getElementById("promo").value;
+
+if(code=="PRO"){
+gold+=1;
+}
+
+if(code=="BSCASE"){
+gold+=10;
+}
+
+if(code=="PRO48K"){
+gold+=23;
+}
+
+save();
+}
+
+update();
+
+</script>
+</body>
+</html>
