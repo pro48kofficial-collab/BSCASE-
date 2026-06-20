@@ -1205,4 +1205,398 @@ function switchScreen(name, btn){
   if(btn) btn.classList.add("active");
   if(name==="inventory") renderInventory();
   if(name==="market") renderMarket();
-  if(nam
+  if(name==="profile") renderProfile();
+}
+
+/***********************
+ * CORE GAME
+ ***********************/
+function openCase(caseId){
+  const c = CASES.find(x=>x.id===caseId);
+  if(!c) return;
+  if(state.gold < c.price){
+    alert("Не вистачає голди!");
+    return;
+  }
+
+  state.gold -= c.price;
+
+  const successBonus = state.caseSuccessBonus + (state.primeVip ? 0.15 : 0);
+
+  // Голда з кейса
+  if(Math.random() < c.goldChance){
+    const amt = rand(c.goldAmount[0], c.goldAmount[1]);
+    state.gold += amt;
+    state.lastOpen = {kind:"gold", amount:amt, caseName:c.name};
+    gainXP(12);
+    renderAll();
+    return;
+  }
+
+  // Секретка 0.001%
+  if(Math.random() < 0.00001){
+    const secretItems = ITEM_POOL.filter(i=>i.rarity==="secret" && c.allowedTypes.includes(i.type));
+    if(secretItems.length){
+      const item = addItemToInventory(randomOf(secretItems));
+      state.lastOpen = {kind:"item", item, caseName:c.name};
+      gainXP(120);
+      renderAll();
+      return;
+    }
+  }
+
+  // Звичайний дроп
+  const rarity = rollRarityWithBonus(c.weights, successBonus);
+  let candidates = ITEM_POOL.filter(i=>i.rarity===rarity && c.allowedTypes.includes(i.type));
+  if(candidates.length===0){
+    candidates = ITEM_POOL.filter(i=>c.allowedTypes.includes(i.type));
+  }
+
+  const item = addItemToInventory(randomOf(candidates));
+  state.lastOpen = {kind:"item", item, caseName:c.name};
+  gainXP(rarityXP(item.rarity));
+  renderAll();
+}
+
+function rollRarityWithBonus(weights, bonus){
+  const mod = {...weights};
+  const shift = Math.min(20, bonus*100);
+
+  mod.common = Math.max(1, mod.common - shift);
+  mod.uncommon += shift*0.35;
+  mod.rare += shift*0.3;
+  mod.epic += shift*0.2;
+  mod.legendary += shift*0.14;
+  mod.secret += shift*0.01;
+
+  const total = Object.values(mod).reduce((a,b)=>a+b,0);
+  let r = Math.random()*total;
+
+  for(const [key,val] of Object.entries(mod)){
+    r -= val;
+    if(r <= 0) return key;
+  }
+  return "common";
+}
+
+function addItemToInventory(template){
+  const item = cloneItem(template);
+  item.uid = "u_" + Math.random().toString(36).slice(2,11);
+  item.appliedSticker = item.appliedSticker || "";
+  item.attachedCharm = item.attachedCharm || "";
+  state.inventory.push(item);
+  return item;
+}
+
+function cloneItem(item){
+  return JSON.parse(JSON.stringify(item));
+}
+
+function rarityXP(r){
+  if(r==="common") return 8;
+  if(r==="uncommon") return 12;
+  if(r==="rare") return 20;
+  if(r==="epic") return 35;
+  if(r==="legendary") return 60;
+  if(r==="secret") return 250;
+  return 10;
+}
+
+function gainXP(amount){
+  state.xp += amount;
+
+  while(state.level < 10000 && state.xp >= xpNeedForLevel(state.level)){
+    state.xp -= xpNeedForLevel(state.level);
+    state.level++;
+
+    let reward = 4;
+    if(state.level === 10000) reward = 10000;
+    state.gold += reward;
+  }
+}
+
+function xpNeedForLevel(level){
+  return Math.floor(20 + level * 3.2);
+}
+
+function doClick(){
+  let gain = state.clickPower;
+  if(state.primeVip) gain *= 2;
+
+  state.gold += gain;
+  gainXP(1);
+
+  renderStats();
+  renderProfile();
+  saveGame();
+}
+
+function buyClickUpgrade(){
+  if(state.gold < 1){
+    alert("Потрібно 1 голда");
+    return;
+  }
+  state.gold -= 1;
+  state.clickPower = +(state.clickPower + 0.005).toFixed(3);
+  state.clickUpgradeLevel++;
+  renderAll();
+}
+
+/***********************
+ * PRIME / VIP
+ ***********************/
+function buyPrimeVip(){
+  if(state.primeVip){
+    alert("Prime + VIP вже куплено");
+    return;
+  }
+  if(state.gold < 10000){
+    alert("Потрібно 10000 голди");
+    return;
+  }
+
+  state.gold -= 10000;
+  state.primeVip = true;
+  renderAll();
+}
+
+/***********************
+ * MARKET
+ ***********************/
+function getAutoSellPrice(item){
+  const map = {
+    common:1,
+    uncommon:2,
+    rare:4,
+    epic:6,
+    legendary:8,
+    secret:10
+  };
+  return map[item.rarity] || 1;
+}
+
+function quickSellItem(index){
+  const item = state.inventory[index];
+  if(!item) return;
+
+  const price = getAutoSellPrice(item);
+  if(!confirm(`Продати "${item.name}" за ${price} голди?`)) return;
+
+  state.gold += price;
+  state.inventory.splice(index,1);
+  renderAll();
+}
+
+function prepareSellMarket(index){
+  switchScreen("market", document.querySelector('.navBtn[data-screen="market"]'));
+  setTimeout(()=>{
+    const inp = document.getElementById("sellPrice_"+index);
+    if(inp) inp.scrollIntoView({behavior:"smooth", block:"center"});
+  },80);
+}
+
+function sellToMarket(index){
+  const item = state.inventory[index];
+  if(!item) return;
+
+  const inp = document.getElementById("sellPrice_"+index);
+  let price = Number(inp?.value || 1);
+  if(price < 1) price = 1;
+  if(price > 10) price = 10;
+
+  state.market.unshift({
+    id:"m_"+Math.random().toString(36).slice(2,10),
+    item: cloneItem(item),
+    price,
+    seller: state.nickname
+  });
+
+  state.inventory.splice(index,1);
+  renderAll();
+}
+
+function buyMarketItem(index){
+  const lot = state.market[index];
+  if(!lot) return;
+
+  if(state.gold < lot.price){
+    alert("Не вистачає голди");
+    return;
+  }
+
+  state.gold -= lot.price;
+  const item = cloneItem(lot.item);
+  item.uid = "u_" + Math.random().toString(36).slice(2,11);
+  state.inventory.push(item);
+  state.market.splice(index,1);
+  renderAll();
+}
+
+/***********************
+ * PROFILE / COSMETICS
+ ***********************/
+function buyNickColor(id){
+  const c = NICK_COLORS.find(x=>x.id===id);
+  if(!c) return;
+
+  if(state.ownedNickColors.includes(id)){
+    alert("Колір вже куплено");
+    return;
+  }
+  if(state.gold < c.price){
+    alert("Не вистачає голди");
+    return;
+  }
+
+  state.gold -= c.price;
+  state.ownedNickColors.push(id);
+  renderAll();
+}
+
+function buyAvatar(id){
+  const a = AVATARS.find(x=>x.id===id);
+  if(!a) return;
+
+  if(state.ownedAvatars.includes(id)){
+    alert("Аватарка вже куплена");
+    return;
+  }
+  if(state.gold < a.price){
+    alert("Не вистачає голди");
+    return;
+  }
+
+  state.gold -= a.price;
+  state.ownedAvatars.push(id);
+  renderAll();
+}
+
+function saveProfile(){
+  const nick = document.getElementById("nickInput").value.trim();
+  const color = document.getElementById("nickColorSelect").value;
+  const avatar = document.getElementById("avatarSelect").value;
+
+  state.nickname = nick || "Гравець";
+  if(state.ownedNickColors.includes(color)) state.nickColor = color;
+  if(state.ownedAvatars.includes(avatar)) state.avatar = avatar;
+
+  renderAll();
+}
+
+function applyStickerToWeapon(){
+  const weaponUid = document.getElementById("equipWeaponSelect").value;
+  const stickerUid = document.getElementById("equipStickerSelect").value;
+
+  if(!weaponUid || !stickerUid){
+    alert("Вибери зброю і стікер");
+    return;
+  }
+
+  const weapon = state.inventory.find(i=>i.uid===weaponUid && i.type==="weapon");
+  const sticker = state.inventory.find(i=>i.uid===stickerUid && i.type==="sticker");
+
+  if(!weapon || !sticker){
+    alert("Предмет не знайдено");
+    return;
+  }
+
+  weapon.appliedSticker = sticker.name.replace("Sticker | ","");
+  state.inventory = state.inventory.filter(i=>i.uid !== stickerUid);
+  renderAll();
+  alert("Стікер наклеєно!");
+}
+
+function attachCharmToWeapon(){
+  const weaponUid = document.getElementById("equipWeaponCharmSelect").value;
+  const charmUid = document.getElementById("equipCharmSelect").value;
+
+  if(!weaponUid || !charmUid){
+    alert("Вибери зброю і брелок");
+    return;
+  }
+
+  const weapon = state.inventory.find(i=>i.uid===weaponUid && i.type==="weapon");
+  const charm = state.inventory.find(i=>i.uid===charmUid && i.type==="charm");
+
+  if(!weapon || !charm){
+    alert("Предмет не знайдено");
+    return;
+  }
+
+  weapon.attachedCharm = charm.name.replace("Charm | ","");
+  state.inventory = state.inventory.filter(i=>i.uid !== charmUid);
+  renderAll();
+  alert("Брелок одягнуто!");
+}
+
+/***********************
+ * PROMOS
+ ***********************/
+function redeemPromo(){
+  const input = document.getElementById("promoInput");
+  const msg = document.getElementById("promoMsg");
+  const code = input.value.trim().toUpperCase();
+
+  if(!code){
+    msg.innerHTML = `<span class="danger">Введи код</span>`;
+    return;
+  }
+
+  if(state.usedPromos.includes(code)){
+    msg.innerHTML = `<span class="danger">Цей код вже використано</span>`;
+    return;
+  }
+
+  const promo = PROMOS[code];
+  if(!promo){
+    msg.innerHTML = `<span class="danger">Невірний промокод</span>`;
+    return;
+  }
+
+  state.usedPromos.push(code);
+  state.gold += promo.gold;
+  state.caseSuccessBonus += promo.caseBonus;
+
+  msg.innerHTML = `<span class="success">Код ${code} активовано! +${promo.gold}G ${promo.caseBonus ? "і +" + Math.round(promo.caseBonus*100) + "% до успіху" : ""}</span>`;
+  input.value = "";
+  renderAll();
+}
+
+/***********************
+ * RESET
+ ***********************/
+function resetProgress(){
+  if(!confirm("Точно скинути весь прогрес BSCASE?")) return;
+  localStorage.removeItem(STORAGE_KEY);
+  state = stateDefault();
+  renderAll();
+}
+
+/***********************
+ * HELPERS
+ ***********************/
+function typeName(type){
+  return ({
+    weapon:"Зброя",
+    sticker:"Стікер",
+    charm:"Брелок",
+    glove:"Рукавички",
+    avatar:"Аватарка",
+    gold:"Голда"
+  })[type] || type;
+}
+
+function formatGold(n){
+  return (Math.round(n * 100) / 100).toString().replace(/\.00$/,"");
+}
+
+function randomOf(arr){
+  return arr[Math.floor(Math.random() * arr.length)];
+}
+
+function rand(min,max){
+  return Math.floor(Math.random() * (max - min + 1)) + min;
+}
+</script>
+</body>
+</html>
