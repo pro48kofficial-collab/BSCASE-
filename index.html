@@ -604,14 +604,605 @@
   </div>
 
   <script>
-    /***********************
-     * BSCASE DATA
-     ***********************/
-    const STORAGE_KEY = "bscase_save_v4";
+/***********************
+ * BSCASE DATA
+ ***********************/
+const STORAGE_KEY = "bscase_save_v4";
 
-    const RARITIES = {
-      common:    {name:"Common",    class:"r-common",    color:"#cfd8e6"},
-      uncommon:  {name:"Uncommon",  class:"r-uncommon",  color:"#76ffb1"},
-      rare:      {name:"Rare",      class:"r-rare",      color:"#8bd1ff"},
-      epic:      {name:"Epic",      class:"r-epic",      color:"#dfb2ff"},
-      legendary: {name:"Legendary", class:"r-legendary", col
+const RARITIES = {
+  common:    {name:"Common",    class:"r-common",    color:"#cfd8e6"},
+  uncommon:  {name:"Uncommon",  class:"r-uncommon",  color:"#76ffb1"},
+  rare:      {name:"Rare",      class:"r-rare",      color:"#8bd1ff"},
+  epic:      {name:"Epic",      class:"r-epic",      color:"#dfb2ff"},
+  legendary: {name:"Legendary", class:"r-legendary", color:"#ffd979"},
+  secret:    {name:"Secret",    class:"r-secret",    color:"#ff9cc7"}
+};
+
+const NICK_COLORS = [
+  {id:"white", name:"Білий", color:"#ffffff", price:0},
+  {id:"gold", name:"Золотий", color:"#ffd54a", price:10},
+  {id:"blue", name:"Блакитний", color:"#6ec6ff", price:10},
+  {id:"green", name:"Зелений", color:"#57e389", price:10},
+  {id:"purple", name:"Фіолетовий", color:"#bb86fc", price:12},
+  {id:"pink", name:"Рожевий", color:"#ff7ad9", price:12},
+  {id:"orange", name:"Помаранчевий", color:"#ffb347", price:12},
+  {id:"red", name:"Червоний", color:"#ff6b6b", price:12}
+];
+
+const AVATARS = [
+  {id:"a0", icon:"🎯", price:0},
+  {id:"a1", icon:"🔫", price:8},
+  {id:"a2", icon:"📷", price:8},
+  {id:"a3", icon:"🎩", price:8},
+  {id:"a4", icon:"📺", price:8},
+  {id:"a5", icon:"🎥", price:8},
+  {id:"a6", icon:"🧸", price:8},
+  {id:"a7", icon:"🕶️", price:8},
+  {id:"a8", icon:"🔥", price:12},
+  {id:"a9", icon:"💎", price:12}
+];
+
+// 123 предмети ринку / кейсів (включно секретки)
+const ITEM_POOL = generateItemPool();
+
+const CASES = [
+  {
+    id:"cheap",
+    name:"Rookie Case",
+    icon:"📦",
+    price:5,
+    desc:"Дешевий кейс: багато common, шанс на голду 56%",
+    goldChance:0.56,
+    goldAmount:[1,1],
+    secretChance:0.00001,
+    weights:{common:68, uncommon:18, rare:9, epic:4, legendary:1, secret:0.001},
+    allowedTypes:["weapon","sticker","avatar"]
+  },
+  {
+    id:"street",
+    name:"Street Case",
+    icon:"🎒",
+    price:12,
+    desc:"Трохи кращий кейс: більше rare та sticker-дропу",
+    goldChance:0.22,
+    goldAmount:[1,2],
+    secretChance:0.00001,
+    weights:{common:50, uncommon:24, rare:16, epic:7, legendary:3, secret:0.001},
+    allowedTypes:["weapon","sticker","charm","avatar"]
+  },
+  {
+    id:"elite",
+    name:"Elite Case",
+    icon:"💼",
+    price:30,
+    desc:"Середній кейс з шансом на epic/legendary",
+    goldChance:0.10,
+    goldAmount:[1,3],
+    secretChance:0.00001,
+    weights:{common:35, uncommon:25, rare:24, epic:10, legendary:6, secret:0.001},
+    allowedTypes:["weapon","sticker","charm","glove"]
+  },
+  {
+    id:"legend",
+    name:"Legend Case",
+    icon:"👑",
+    price:60,
+    desc:"Дорогий кейс: 2% шанс голди, більше легендарок",
+    goldChance:0.02,
+    goldAmount:[2,5],
+    secretChance:0.00001,
+    weights:{common:18, uncommon:22, rare:28, epic:20, legendary:12, secret:0.001},
+    allowedTypes:["weapon","sticker","charm","glove","avatar"]
+  },
+  {
+    id:"mythic",
+    name:"Mythic Case",
+    icon:"💎",
+    price:100,
+    desc:"Найдорожчий кейс: топовий дроп і секретки",
+    goldChance:0.02,
+    goldAmount:[3,7],
+    secretChance:0.00001,
+    weights:{common:10, uncommon:18, rare:30, epic:24, legendary:18, secret:0.001},
+    allowedTypes:["weapon","sticker","charm","glove","avatar"]
+  }
+];
+
+const PROMOS = {
+  PRO:{gold:1, caseBonus:0},
+  BSCASE:{gold:10, caseBonus:0.02},
+  PRO48K:{gold:23, caseBonus:0.04}
+};
+
+const stateDefault = () => ({
+  gold: 25,
+  xp: 0,
+  level: 1,
+  clickPower: 0.01,
+  clickUpgradeLevel: 0,
+  caseSuccessBonus: 0,
+  primeVip: false,
+
+  nickname: "Гравець",
+  nickColor: "white",
+  avatar: "a0",
+
+  ownedNickColors: ["white"],
+  ownedAvatars: ["a0"],
+
+  inventory: [],
+  market: seedMarketListings(),
+  usedPromos: [],
+  lastOpen: null
+});
+
+let state = loadGame();
+
+/***********************
+ * INIT
+ ***********************/
+fakeLoading().then(() => {
+  renderAll();
+  document.getElementById("loadingScreen").style.opacity = "0";
+  setTimeout(() => document.getElementById("loadingScreen").remove(), 500);
+});
+
+function fakeLoading(){
+  return new Promise(resolve=>{
+    let p = 0;
+    const fill = document.getElementById("loadFill");
+    const txt = document.getElementById("loadText");
+    const steps = [
+      "Підключення кейсів...",
+      "Завантаження інвентаря...",
+      "Ринок BSCASE...",
+      "Синхронізація профілю...",
+      "Готово!"
+    ];
+    const timer = setInterval(()=>{
+      p += Math.random()*22 + 8;
+      if(p >= 100) p = 100;
+      fill.style.width = p + "%";
+      txt.textContent = steps[Math.min(steps.length-1, Math.floor((p/100)*(steps.length)))];
+      if(p >= 100){
+        clearInterval(timer);
+        setTimeout(resolve, 350);
+      }
+    }, 180);
+  });
+}
+
+/***********************
+ * DATA GENERATORS
+ ***********************/
+function generateItemPool(){
+  const weapons = [
+    "AKR","M4","M4A1","P90","UMP45","MP7","FAMAS","AUG","AWM","Scout","Deagle","USP","Glock","Five-SeveN",
+    "Knife","Karambit","Butterfly","M9 Bayonet","Dual Berettas","SPAS","Nova","G3SG1","MAC10","Tec-9","Galil","SG553",
+    "CZ75","Revolver","Vector","PP-Bizon","RPK","FNFAL","MP5","P250","Sawed-Off","M249","XM1014","AN94","Groza","VSS"
+  ];
+  const stickers = [
+    "Dragon","Pixel Skull","BS Pro","Flame","Crown","Thunder","Block Cat","Ice Shot","Venom","Neon Eye",
+    "Cyber Bee","Gold Crown","Wolf","Storm","Toxic","Retro","Blue Fire","Matrix","Ghost","Crystal"
+  ];
+  const charms = [
+    "Mini Knife","Gold Cube","Skull Key","Pixel Bomb","Blue Crystal","Lucky Coin","Dragon Fang","Radio","Heart Gem","Star Cube",
+    "Ghost Bell","Mini AWM","Mini Karambit","VIP Token","Bear Charm"
+  ];
+  const gloves = [
+    "Tactical Gloves","Crimson Gloves","Frost Gloves","Neon Gloves","Shadow Gloves","Royal Gloves","Gold Gloves","Acid Gloves"
+  ];
+  const avatars = [
+    "Sniper Avatar","Pro Avatar","Shadow Avatar","Fire Avatar","VIP Avatar","Skull Avatar","Legend Avatar","Diamond Avatar"
+  ];
+
+  const arr = [];
+  let idCounter = 1;
+
+  function pushItem(type, name, rarity, icon){
+    arr.push({
+      id: "item_"+(idCounter++),
+      type, name, rarity, icon
+    });
+  }
+
+  // weapons 70
+  for(let i=0;i<70;i++){
+    const w = weapons[i % weapons.length];
+    const skinNum = i+1;
+    const rarity = pickByIndex(i, [25,20,12,8,4,1]);
+    const skinNames = ["Dust","Urban","Frozen","Inferno","Neon","Dragon","Vortex","Royal","Cyber","Shadow","Toxic","Gold"];
+    const skin = skinNames[i % skinNames.length];
+    pushItem("weapon", `${w} | ${skin} #${skinNum}`, rarity, weaponIcon(w));
+  }
+
+  // stickers 20 => 90
+  for(let i=0;i<20;i++){
+    const s = stickers[i % stickers.length];
+    const rarity = pickByIndex(i+4, [8,6,3,2,1,0.2]);
+    pushItem("sticker", `Sticker | ${s}`, rarity, "🏷️");
+  }
+
+  // charms 15 => 105
+  for(let i=0;i<15;i++){
+    const c = charms[i % charms.length];
+    const rarity = pickByIndex(i+8, [6,5,3,2,1,0.2]);
+    pushItem("charm", `Charm | ${c}`, rarity, "🔗");
+  }
+
+  // gloves 8 => 113
+  for(let i=0;i<8;i++){
+    const g = gloves[i % gloves.length];
+    const rarity = pickByIndex(i+10, [0,2,3,2,1,0.2]);
+    pushItem("glove", `${g}`, rarity, "🧤");
+  }
+
+  // avatars 8 => 121
+  for(let i=0;i<8;i++){
+    const a = avatars[i % avatars.length];
+    const rarity = pickByIndex(i+2, [2,2,2,1,1,0.2]);
+    pushItem("avatar", `${a}`, rarity, "🖼️");
+  }
+
+  // 2 секретки = 123
+  pushItem("weapon", "SECRET | Karambit Void", "secret", "🌌");
+  pushItem("weapon", "SECRET | AWM Black Hole", "secret", "🕳️");
+
+  return arr.slice(0,123);
+}
+
+function pickByIndex(i){
+  if(i % 37 === 0) return "secret";
+  if(i % 13 === 0) return "legendary";
+  if(i % 7 === 0) return "epic";
+  if(i % 5 === 0) return "rare";
+  if(i % 3 === 0) return "uncommon";
+  return "common";
+}
+
+function weaponIcon(name){
+  const n = name.toLowerCase();
+  if(n.includes("knife") || n.includes("karambit") || n.includes("bayonet") || n.includes("butterfly")) return "🔪";
+  if(n.includes("awm") || n.includes("scout") || n.includes("vss")) return "🎯";
+  if(n.includes("deagle") || n.includes("usp") || n.includes("glock") || n.includes("p250") || n.includes("revolver")) return "🔫";
+  if(n.includes("spas") || n.includes("nova") || n.includes("xm1014") || n.includes("sawed")) return "💥";
+  return "🧨";
+}
+
+function seedMarketListings(){
+  const picks = ITEM_POOL.filter(x=>["rare","epic","legendary"].includes(x.rarity)).slice(0,12);
+  return picks.map((it, idx)=>({
+    id: "m_"+Math.random().toString(36).slice(2,10),
+    item: cloneItem(it),
+    price: Math.min(10, 3 + (idx%8)),
+    seller: idx%2===0 ? "Ринок" : "BS Trader"
+  }));
+}
+
+/***********************
+ * SAVE / LOAD
+ ***********************/
+function saveGame(){
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+}
+function loadGame(){
+  try{
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if(!raw) return stateDefault();
+    const parsed = JSON.parse(raw);
+    return {...stateDefault(), ...parsed};
+  }catch(e){
+    return stateDefault();
+  }
+}
+
+/***********************
+ * UI RENDER
+ ***********************/
+function renderAll(){
+  renderStats();
+  renderCases();
+  renderInventory();
+  renderMarket();
+  renderShop();
+  renderProfile();
+  renderOpenResult();
+  saveGame();
+}
+
+function renderStats(){
+  document.getElementById("goldStat").textContent = formatGold(state.gold);
+  document.getElementById("levelStat").textContent = state.level;
+  document.getElementById("invStat").textContent = state.inventory.length;
+  document.getElementById("clickStat").textContent = state.clickPower.toFixed(3);
+  document.getElementById("clickerPowerLabel").textContent = state.clickPower.toFixed(3);
+  document.getElementById("clickUpgradeLevel").textContent = state.clickUpgradeLevel;
+}
+
+function renderCases(){
+  const wrap = document.getElementById("casesWrap");
+  wrap.innerHTML = "";
+  CASES.forEach(c=>{
+    const el = document.createElement("div");
+    el.className = "caseCard";
+    el.innerHTML = `
+      <div class="caseHead">
+        <div class="caseIcon">${c.icon}</div>
+        <div class="caseInfo">
+          <b>${c.name}</b>
+          <small>${c.desc}</small>
+          <div style="margin-top:8px" class="tag">Ціна: ${c.price} G</div>
+        </div>
+      </div>
+
+      <div class="chanceList">
+        <div class="chanceTag">💰 Голда: ${(c.goldChance*100).toFixed(1)}%</div>
+        <div class="chanceTag">🌌 Secret: 0.001%</div>
+        <div class="chanceTag">🔹 Rare+: ${Math.round(c.weights.rare + c.weights.epic + c.weights.legendary)}%</div>
+        <div class="chanceTag">🎁 Типи: ${c.allowedTypes.length}</div>
+      </div>
+
+      <div style="margin-top:10px">
+        <button class="btn gold" onclick="openCase('${c.id}')">Відкрити за ${c.price} G</button>
+      </div>
+    `;
+    wrap.appendChild(el);
+  });
+}
+
+function renderOpenResult(){
+  const box = document.getElementById("openResult");
+  if(!state.lastOpen){
+    box.className = "caseOpenBox muted";
+    box.textContent = "Ще нічого не відкрито";
+    return;
+  }
+  const x = state.lastOpen;
+  if(x.kind === "gold"){
+    box.className = "caseOpenBox";
+    box.innerHTML = `
+      <div class="openResultIcon">💰</div>
+      <b>Ти отримав ${x.amount} голди!</b>
+      <div class="muted tiny" style="margin-top:6px">Кейс: ${x.caseName}</div>
+    `;
+  }else{
+    const r = RARITIES[x.item.rarity];
+    box.className = "caseOpenBox";
+    box.innerHTML = `
+      <div class="openResultIcon">${x.item.icon}</div>
+      <b>${x.item.name}</b><br>
+      <span class="rarity ${r.class}">${r.name}</span>
+      <div class="muted tiny" style="margin-top:6px">Кейс: ${x.caseName}</div>
+    `;
+  }
+}
+
+function renderInventory(){
+  const list = document.getElementById("inventoryList");
+  list.innerHTML = "";
+  const filter = document.getElementById("inventoryFilter").value;
+
+  let items = state.inventory;
+  if(filter !== "all") items = items.filter(i=>i.type===filter);
+
+  if(items.length===0){
+    list.innerHTML = `<div class="card muted center">Інвентарь порожній</div>`;
+    refreshEquipSelects();
+    return;
+  }
+
+  items.forEach((item, index)=>{
+    const r = RARITIES[item.rarity] || RARITIES.common;
+    const extra = [];
+    if(item.appliedSticker) extra.push(`Стікер: ${item.appliedSticker}`);
+    if(item.attachedCharm) extra.push(`Брелок: ${item.attachedCharm}`);
+    const extraText = extra.length ? `<div class="tiny muted" style="margin-top:4px">${extra.join(" • ")}</div>` : "";
+
+    const sellAutoPrice = getAutoSellPrice(item);
+    const div = document.createElement("div");
+    div.className = "item";
+    div.innerHTML = `
+      <div class="itemIcon">${item.icon}</div>
+      <div class="itemMain">
+        <b>${item.name}</b>
+        <small>${typeName(item.type)}</small><br>
+        <span class="rarity ${r.class}">${r.name}</span>
+        ${extraText}
+      </div>
+      <div style="width:110px;display:grid;gap:6px">
+        <button class="btn small" onclick="quickSellItem(${index})">Продати<br>${sellAutoPrice}G</button>
+        ${item.type !== "gold" ? `<button class="btn small gold" onclick="prepareSellMarket(${index})">На ринок</button>` : ""}
+      </div>
+    `;
+    list.appendChild(div);
+  });
+
+  refreshEquipSelects();
+}
+
+function renderMarket(){
+  const mySell = document.getElementById("mySellList");
+  const market = document.getElementById("marketList");
+  mySell.innerHTML = "";
+  market.innerHTML = "";
+
+  const sellable = state.inventory.filter(i=>i.type!=="gold");
+  if(sellable.length===0){
+    mySell.innerHTML = `<div class="item"><div class="itemMain"><b>Нема предметів для продажу</b><small>Відкрий кейси або купи щось</small></div></div>`;
+  }else{
+    sellable.slice(0,12).forEach((item)=>{
+      const realIndex = state.inventory.findIndex(x=>x.uid===item.uid);
+      const r = RARITIES[item.rarity];
+      const div = document.createElement("div");
+      div.className = "item";
+      div.innerHTML = `
+        <div class="itemIcon">${item.icon}</div>
+        <div class="itemMain">
+          <b>${item.name}</b>
+          <small>${typeName(item.type)}</small><br>
+          <span class="rarity ${r.class}">${r.name}</span>
+        </div>
+        <div style="width:120px;display:grid;gap:6px">
+          <input class="marketPrice" id="sellPrice_${realIndex}" type="number" min="1" max="10" value="${Math.min(10,getAutoSellPrice(item))}">
+          <button class="btn gold small" onclick="sellToMarket(${realIndex})">Виставити</button>
+        </div>
+      `;
+      mySell.appendChild(div);
+    });
+  }
+
+  if(state.market.length===0){
+    market.innerHTML = `<div class="item"><div class="itemMain"><b>На ринку поки пусто</b></div></div>`;
+  }else{
+    state.market.forEach((lot, idx)=>{
+      const item = lot.item;
+      const r = RARITIES[item.rarity];
+      const div = document.createElement("div");
+      div.className = "item";
+      div.innerHTML = `
+        <div class="itemIcon">${item.icon}</div>
+        <div class="itemMain">
+          <b>${item.name}</b>
+          <small>${typeName(item.type)} • Продавець: ${lot.seller}</small><br>
+          <span class="rarity ${r.class}">${r.name}</span>
+        </div>
+        <div style="width:100px;display:grid;gap:6px">
+          <div class="tag center">${lot.price} G</div>
+          <button class="btn green small" onclick="buyMarketItem(${idx})">Купити</button>
+        </div>
+      `;
+      market.appendChild(div);
+    });
+  }
+}
+
+function renderShop(){
+  const colorWrap = document.getElementById("nickColorShop");
+  const avatarWrap = document.getElementById("avatarShop");
+  colorWrap.innerHTML = "";
+  avatarWrap.innerHTML = "";
+
+  NICK_COLORS.forEach(c=>{
+    const owned = state.ownedNickColors.includes(c.id);
+    const div = document.createElement("div");
+    div.className = "item";
+    div.style.padding = "8px";
+    div.innerHTML = `
+      <div class="itemIcon" style="font-size:22px;color:${c.color}">A</div>
+      <div class="itemMain">
+        <b style="color:${c.color}">${c.name}</b>
+        <small>${owned ? "Куплено" : c.price + " G"}</small>
+      </div>
+      <button class="btn small ${owned ? "" : "gold"} inline" onclick="buyNickColor('${c.id}')" ${owned ? "disabled" : ""}>
+        ${owned ? "Є" : "Купити"}
+      </button>
+    `;
+    colorWrap.appendChild(div);
+  });
+
+  AVATARS.forEach(a=>{
+    const owned = state.ownedAvatars.includes(a.id);
+    const div = document.createElement("div");
+    div.className = "item";
+    div.style.padding = "8px";
+    div.innerHTML = `
+      <div class="itemIcon">${a.icon}</div>
+      <div class="itemMain">
+        <b>${a.icon} Avatar</b>
+        <small>${owned ? "Куплено" : a.price + " G"}</small>
+      </div>
+      <button class="btn small ${owned ? "" : "gold"} inline" onclick="buyAvatar('${a.id}')" ${owned ? "disabled" : ""}>
+        ${owned ? "Є" : "Купити"}
+      </button>
+    `;
+    avatarWrap.appendChild(div);
+  });
+}
+
+function renderProfile(){
+  const colorObj = NICK_COLORS.find(x=>x.id===state.nickColor) || NICK_COLORS[0];
+  const avatarObj = AVATARS.find(x=>x.id===state.avatar) || AVATARS[0];
+
+  document.getElementById("profileAvatarBig").textContent = avatarObj.icon;
+  const nickEl = document.getElementById("profileNick");
+  nickEl.textContent = state.nickname;
+  nickEl.style.color = colorObj.color;
+
+  document.getElementById("profileStatusText").textContent =
+    state.primeVip ? "Prime + VIP активний" : "Без статусу";
+  document.getElementById("profileLvlTag").textContent = "LVL " + state.level;
+  document.getElementById("profileGoldTag").textContent = formatGold(state.gold) + " G";
+  document.getElementById("profileItemsTag").textContent = state.inventory.length + " предметів";
+
+  document.getElementById("nickInput").value = state.nickname;
+
+  const colorSelect = document.getElementById("nickColorSelect");
+  colorSelect.innerHTML = "";
+  state.ownedNickColors.forEach(id=>{
+    const c = NICK_COLORS.find(x=>x.id===id);
+    const opt = document.createElement("option");
+    opt.value = id;
+    opt.textContent = c.name;
+    if(id===state.nickColor) opt.selected = true;
+    colorSelect.appendChild(opt);
+  });
+
+  const avatarSelect = document.getElementById("avatarSelect");
+  avatarSelect.innerHTML = "";
+  state.ownedAvatars.forEach(id=>{
+    const a = AVATARS.find(x=>x.id===id);
+    const opt = document.createElement("option");
+    opt.value = id;
+    opt.textContent = a.icon + " " + a.id.toUpperCase();
+    if(id===state.avatar) opt.selected = true;
+    avatarSelect.appendChild(opt);
+  });
+
+  refreshEquipSelects();
+}
+
+function refreshEquipSelects(){
+  const weaponSel = document.getElementById("equipWeaponSelect");
+  const stickerSel = document.getElementById("equipStickerSelect");
+  const weaponCharmSel = document.getElementById("equipWeaponCharmSelect");
+  const charmSel = document.getElementById("equipCharmSelect");
+
+  const weapons = state.inventory.filter(i=>i.type==="weapon");
+  const stickers = state.inventory.filter(i=>i.type==="sticker");
+  const charms = state.inventory.filter(i=>i.type==="charm");
+
+  fillSelect(weaponSel, weapons, "Нема зброї");
+  fillSelect(stickerSel, stickers, "Нема стікерів");
+  fillSelect(weaponCharmSel, weapons, "Нема зброї");
+  fillSelect(charmSel, charms, "Нема брелоків");
+}
+
+function fillSelect(select, arr, emptyText){
+  if(!select) return;
+  select.innerHTML = "";
+  if(arr.length===0){
+    const opt = document.createElement("option");
+    opt.value = "";
+    opt.textContent = emptyText;
+    select.appendChild(opt);
+    return;
+  }
+  arr.forEach(it=>{
+    const opt = document.createElement("option");
+    opt.value = it.uid;
+    opt.textContent = `${it.icon} ${it.name}`;
+    select.appendChild(opt);
+  });
+}
+
+/***********************
+ * SCREEN SWITCH
+ ***********************/
+function switchScreen(name, btn){
+  document.querySelectorAll(".screen").forEach(s=>s.classList.add("hidden"));
+  document.getElementById("screen-"+name).classList.remove("hidden");
+  document.querySelectorAll(".navBtn").forEach(b=>b.classList.remove("active"));
+  if(btn) btn.classList.add("active");
+  if(name==="inventory") renderInventory();
+  if(name==="market") renderMarket();
+  if(nam
