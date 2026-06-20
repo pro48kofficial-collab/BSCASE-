@@ -1,283 +1,617 @@
 <!DOCTYPE html>
 <html lang="uk">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>BSCASE</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>BSCASE — Block Strike Cases</title>
+  <style>
+    :root{
+      --bg:#0b0f17;
+      --panel:#121a28;
+      --panel2:#182235;
+      --line:#24324d;
+      --text:#e9f1ff;
+      --muted:#9fb1d1;
+      --gold:#ffd54a;
+      --green:#57e389;
+      --red:#ff6b6b;
+      --blue:#6ec6ff;
+      --purple:#bb86fc;
+      --pink:#ff7ad9;
+      --orange:#ffb347;
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0;
+      font-family:Arial, Helvetica, sans-serif;
+      background:
+        radial-gradient(circle at top, #1a2640 0%, #0b0f17 55%),
+        linear-gradient(180deg,#0b0f17,#0b0f17);
+      color:var(--text);
+      min-height:100vh;
+      overflow-x:hidden;
+    }
+    .hidden{display:none!important}
+    .app{
+      max-width:460px;
+      margin:0 auto;
+      min-height:100vh;
+      padding-bottom:90px;
+      position:relative;
+    }
+    .topbar{
+      position:sticky;
+      top:0;
+      z-index:10;
+      background:rgba(11,15,23,.92);
+      backdrop-filter: blur(10px);
+      border-bottom:1px solid var(--line);
+      padding:10px 12px;
+    }
+    .brand{
+      display:flex;
+      align-items:center;
+      gap:10px;
+    }
+    .brandLogo{
+      width:42px;height:42px;border-radius:12px;
+      display:grid;place-items:center;
+      background:linear-gradient(135deg,#2b3d64,#10192b);
+      border:1px solid #38507c;
+      font-size:24px;
+      box-shadow:0 0 18px rgba(110,198,255,.18);
+    }
+    .brandText b{font-size:20px; letter-spacing:1px}
+    .brandText small{display:block;color:var(--muted); margin-top:2px}
+    .stats{
+      margin-top:10px;
+      display:grid;
+      grid-template-columns:repeat(4,1fr);
+      gap:8px;
+    }
+    .stat{
+      background:var(--panel);
+      border:1px solid var(--line);
+      border-radius:14px;
+      padding:8px;
+      text-align:center;
+    }
+    .stat .v{font-weight:700;font-size:15px}
+    .stat .k{font-size:11px;color:var(--muted);margin-top:4px}
 
-<style>
-body{
-    margin:0;
-    background:#111;
-    color:white;
-    font-family:Arial;
-    text-align:center;
-}
+    .screen{
+      padding:12px;
+      animation:fade .25s ease;
+    }
+    @keyframes fade{from{opacity:0; transform:translateY(6px)} to{opacity:1; transform:none}}
+    .sectionTitle{
+      font-size:18px;
+      font-weight:700;
+      margin:6px 0 12px;
+      display:flex;align-items:center;gap:8px;
+    }
 
-.top{
-    background:#222;
-    padding:10px;
-}
+    .card{
+      background:linear-gradient(180deg,var(--panel),var(--panel2));
+      border:1px solid var(--line);
+      border-radius:18px;
+      padding:12px;
+      margin-bottom:12px;
+      box-shadow:0 8px 24px rgba(0,0,0,.2);
+    }
 
-button{
-    background:#ff9800;
-    color:white;
-    border:none;
-    padding:10px;
-    margin:5px;
-    border-radius:10px;
-}
+    .row{display:flex; gap:10px; align-items:center}
+    .between{display:flex;justify-content:space-between;align-items:center;gap:10px}
+    .wrap{display:flex;flex-wrap:wrap;gap:8px}
 
-.case{
-    background:#222;
-    margin:10px;
-    padding:10px;
-    border-radius:10px;
-}
+    .btn{
+      border:none;
+      background:linear-gradient(180deg,#2a3b61,#1a2842);
+      color:#fff;
+      padding:10px 12px;
+      border-radius:14px;
+      cursor:pointer;
+      font-weight:700;
+      border:1px solid #37507e;
+      transition:.15s transform,.15s opacity;
+      width:100%;
+    }
+    .btn:hover{transform:translateY(-1px)}
+    .btn:active{transform:scale(.98)}
+    .btn.gold{
+      background:linear-gradient(180deg,#f8d85b,#d69f00);
+      color:#2d2100;border-color:#ffea9c;
+    }
+    .btn.green{
+      background:linear-gradient(180deg,#4ddb8c,#1ea85f);
+      border-color:#7bf1b0;color:#062b16;
+    }
+    .btn.red{
+      background:linear-gradient(180deg,#ff8a8a,#db4f4f);
+      border-color:#ffb1b1;color:#340909;
+    }
+    .btn.small{padding:8px 10px;font-size:13px}
+    .btn.inline{width:auto}
 
-.inventory{
-    background:#1a1a1a;
-    margin:10px;
-    padding:10px;
-}
+    .caseGrid,.grid2,.grid3{
+      display:grid;gap:10px;
+    }
+    .caseGrid{grid-template-columns:1fr}
+    .grid2{grid-template-columns:1fr 1fr}
+    .grid3{grid-template-columns:1fr 1fr 1fr}
 
-.gold{
-    color:gold;
-}
+    .caseCard{
+      background:linear-gradient(180deg,#18253d,#101828);
+      border:1px solid var(--line);
+      border-radius:18px;
+      padding:12px;
+      position:relative;
+      overflow:hidden;
+    }
+    .caseCard::after{
+      content:"";
+      position:absolute; inset:auto -20px -30px auto;
+      width:120px;height:120px;border-radius:50%;
+      background:radial-gradient(circle, rgba(255,255,255,.08), transparent 70%);
+      pointer-events:none;
+    }
+    .caseHead{display:flex; gap:12px; align-items:center}
+    .caseIcon{
+      width:72px;height:72px;border-radius:16px;
+      display:grid;place-items:center;
+      font-size:36px;
+      border:1px solid rgba(255,255,255,.12);
+      background:linear-gradient(180deg,rgba(255,255,255,.08),rgba(255,255,255,.02));
+      flex-shrink:0;
+    }
+    .caseInfo b{font-size:16px}
+    .caseInfo small{display:block;color:var(--muted); margin-top:4px}
+    .chanceList{
+      margin-top:10px;
+      display:grid;grid-template-columns:1fr 1fr;gap:6px;
+      font-size:12px;color:#dbe6ff;
+    }
+    .chanceTag{
+      background:#0f1728;border:1px solid #22324f;border-radius:10px;padding:6px 8px;
+    }
 
-.legendary{
-    color:orange;
-}
+    .inventoryList,.marketList,.skinList{
+      display:grid; gap:8px;
+    }
 
-.epic{
-    color:#b300ff;
-}
+    .item{
+      background:#0f1728;
+      border:1px solid #22324f;
+      border-radius:14px;
+      padding:10px;
+      display:flex; gap:10px; align-items:center;
+    }
+    .itemIcon{
+      width:56px;height:56px;border-radius:14px;
+      display:grid;place-items:center;font-size:28px;
+      background:linear-gradient(180deg,#203050,#121c2f);
+      border:1px solid #30476f;
+      flex-shrink:0;
+    }
+    .itemMain{flex:1; min-width:0}
+    .itemMain b{
+      display:block;
+      font-size:14px;
+      white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+    }
+    .itemMain small{color:var(--muted)}
+    .rarity{
+      display:inline-block;
+      margin-top:5px;
+      padding:4px 8px;
+      border-radius:999px;
+      font-size:11px;
+      font-weight:700;
+      border:1px solid rgba(255,255,255,.15);
+    }
+    .r-common{background:#2d3648;color:#dfe8ff}
+    .r-uncommon{background:#1f4d39;color:#b7ffd7}
+    .r-rare{background:#173f70;color:#c9e7ff}
+    .r-epic{background:#4b2a73;color:#f0d7ff}
+    .r-legendary{background:#6a4600;color:#ffe7a0}
+    .r-secret{background:#6b002a;color:#ffd2e5; box-shadow:0 0 18px rgba(255,64,129,.22)}
 
-.rare{
-    color:#0099ff;
-}
+    .tag{
+      font-size:11px;
+      color:#dbe6ff;
+      background:#13213a;
+      border:1px solid #29416d;
+      border-radius:999px;
+      padding:4px 8px;
+    }
+    .muted{color:var(--muted)}
+    .tiny{font-size:12px}
+    input, select{
+      width:100%;
+      background:#0f1728;
+      color:#fff;
+      border:1px solid #2b4067;
+      border-radius:12px;
+      padding:10px 12px;
+      outline:none;
+    }
+    .profileHead{
+      display:flex;gap:12px;align-items:center;
+    }
+    .avatarBig{
+      width:72px;height:72px;border-radius:18px;
+      display:grid;place-items:center;font-size:38px;
+      background:linear-gradient(180deg,#223557,#111a2d);
+      border:1px solid #3b5788;
+    }
+    .nick{
+      font-weight:800;
+      font-size:18px;
+      text-shadow:0 0 10px rgba(255,255,255,.1);
+    }
 
-.common{
-    color:white;
-}
-</style>
+    .bottomNav{
+      position:fixed;
+      left:50%;
+      transform:translateX(-50%);
+      bottom:0;
+      width:min(460px,100%);
+      background:rgba(10,14,22,.96);
+      backdrop-filter: blur(10px);
+      border-top:1px solid var(--line);
+      display:grid;
+      grid-template-columns:repeat(6,1fr);
+      gap:4px;
+      padding:8px;
+      z-index:20;
+    }
+    .navBtn{
+      background:#10192a;
+      border:1px solid #243755;
+      color:#dbe6ff;
+      border-radius:14px;
+      padding:8px 4px;
+      font-size:11px;
+      text-align:center;
+      cursor:pointer;
+      font-weight:700;
+    }
+    .navBtn.active{
+      background:linear-gradient(180deg,#2b4068,#182741);
+      box-shadow:0 0 0 1px #46679d inset, 0 0 14px rgba(110,198,255,.15);
+    }
+
+    .loading{
+      position:fixed; inset:0;
+      background:
+        radial-gradient(circle at center, #243d69 0%, #0f1728 35%, #080c14 100%);
+      display:flex; flex-direction:column;
+      align-items:center; justify-content:center;
+      z-index:999;
+      transition:.5s opacity;
+    }
+    .loadingLogo{
+      width:110px;height:110px;border-radius:28px;
+      display:grid;place-items:center;
+      font-size:58px;
+      background:linear-gradient(180deg,#1f3154,#0d1524);
+      border:1px solid #45659d;
+      box-shadow:0 0 40px rgba(110,198,255,.25);
+      animation:pulse 1.2s infinite ease-in-out;
+    }
+    @keyframes pulse{
+      0%{transform:scale(1); box-shadow:0 0 25px rgba(110,198,255,.18)}
+      50%{transform:scale(1.05); box-shadow:0 0 45px rgba(110,198,255,.35)}
+      100%{transform:scale(1); box-shadow:0 0 25px rgba(110,198,255,.18)}
+    }
+    .loadBar{
+      width:min(320px,85vw); height:14px;
+      background:#0b1220; border:1px solid #2f466f; border-radius:999px;
+      margin-top:18px; overflow:hidden;
+    }
+    .loadFill{
+      height:100%; width:0%;
+      background:linear-gradient(90deg,#6ec6ff,#ffd54a,#bb86fc);
+      transition:.18s;
+    }
+    .center{text-align:center}
+    .marketPrice{
+      width:90px;
+    }
+    .success{
+      color:#89ffba;
+      font-weight:700;
+    }
+    .danger{
+      color:#ff9b9b;
+      font-weight:700;
+    }
+    .caseOpenBox{
+      text-align:center;
+      padding:16px;
+      border-radius:18px;
+      background:linear-gradient(180deg,#14203a,#0f1728);
+      border:1px solid #28416a;
+    }
+    .openResultIcon{
+      font-size:58px;
+      margin-bottom:8px;
+      filter:drop-shadow(0 0 18px rgba(255,255,255,.18));
+    }
+    .subgrid{
+      display:grid;grid-template-columns:1fr 1fr;gap:8px;
+    }
+  </style>
 </head>
 <body>
+  <div id="loadingScreen" class="loading">
+    <div class="loadingLogo">🎯</div>
+    <h1 style="margin:16px 0 8px;letter-spacing:1px">BSCASE</h1>
+    <div class="muted">Block Strike Cases</div>
+    <div class="loadBar"><div id="loadFill" class="loadFill"></div></div>
+    <div id="loadText" class="muted" style="margin-top:10px">Загрузка...</div>
+  </div>
 
-<h1>🎁 BSCASE</h1>
+  <div class="app">
+    <div class="topbar">
+      <div class="brand">
+        <div class="brandLogo">🎯</div>
+        <div class="brandText">
+          <b>BSCASE</b>
+          <small>Block Strike Cases</small>
+        </div>
+      </div>
 
-<div class="top">
-💰 Голда:
-<span id="gold">10</span>
-<br>
-⭐ Рівень:
-<span id="level">1</span>
-</div>
+      <div class="stats">
+        <div class="stat">
+          <div class="v" id="goldStat">0</div>
+          <div class="k">Голда</div>
+        </div>
+        <div class="stat">
+          <div class="v" id="levelStat">1</div>
+          <div class="k">LVL</div>
+        </div>
+        <div class="stat">
+          <div class="v" id="invStat">0</div>
+          <div class="k">Інвентарь</div>
+        </div>
+        <div class="stat">
+          <div class="v" id="clickStat">0.01</div>
+          <div class="k">За клік</div>
+        </div>
+      </div>
+    </div>
 
-<h2>⛏ Клікер</h2>
+    <!-- CASES -->
+    <section id="screen-cases" class="screen">
+      <div class="sectionTitle">🎁 Кейси</div>
+      <div id="casesWrap" class="caseGrid"></div>
 
-<button onclick="mineGold()">
-💰 Заробити голду
-</button>
+      <div class="card">
+        <div class="sectionTitle" style="font-size:16px;margin-top:0">🎲 Останній дроп</div>
+        <div id="openResult" class="caseOpenBox muted">Ще нічого не відкрито</div>
+      </div>
+    </section>
 
-<p>
-За клік:
-<span id="clickPower">0.01</span>
-</p>
+    <!-- SHOP -->
+    <section id="screen-shop" class="screen hidden">
+      <div class="sectionTitle">🛒 Магазин</div>
 
-<button onclick="upgradeClick()">
-⬆ Покращити (+0.005)
-Ціна: 1💰
-</button>
+      <div class="card">
+        <div class="between">
+          <div>
+            <b>Прокачка кліку</b>
+            <div class="muted tiny">1 голда = +0.005 до голди за клік</div>
+          </div>
+          <button class="btn gold inline" onclick="buyClickUpgrade()">Купити</button>
+        </div>
+      </div>
 
-<h2>🎁 Кейси</h2>
+      <div class="card">
+        <div class="sectionTitle" style="font-size:16px;margin-top:0">💎 Статуси</div>
+        <div class="inventoryList">
+          <div class="item">
+            <div class="itemIcon">⭐</div>
+            <div class="itemMain">
+              <b>Prime + VIP</b>
+              <small>+100% за клік та +15% до успіху відкриття кейсів</small>
+            </div>
+            <button class="btn gold small inline" onclick="buyPrimeVip()">10000G</button>
+          </div>
+        </div>
+      </div>
 
-<div class="case">
-🎁 Starter Case (5💰)
-<br>
-<button onclick="openCase(5)">
-Відкрити
-</button>
-</div>
+      <div class="card">
+        <div class="sectionTitle" style="font-size:16px;margin-top:0">🎨 Кольори ніку</div>
+        <div class="grid2" id="nickColorShop"></div>
+      </div>
 
-<div class="case">
-🎁 Bronze Case (10💰)
-<br>
-<button onclick="openCase(10)">
-Відкрити
-</button>
-</div>
+      <div class="card">
+        <div class="sectionTitle" style="font-size:16px;margin-top:0">🖼 Аватарки</div>
+        <div class="grid3" id="avatarShop"></div>
+      </div>
+    </section>
 
-<div class="case">
-🎁 Silver Case (25💰)
-<br>
-<button onclick="openCase(25)">
-Відкрити
-</button>
-</div>
+    <!-- INVENTORY -->
+    <section id="screen-inventory" class="screen hidden">
+      <div class="sectionTitle">🎒 Інвентарь</div>
 
-<div class="case">
-🎁 Gold Case (50💰)
-<br>
-<button onclick="openCase(50)">
-Відкрити
-</button>
-</div>
+      <div class="card">
+        <div class="between">
+          <div>
+            <b>Фільтр</b>
+            <div class="muted tiny">Зброя / стікери / брелоки / рукавички / аватарки</div>
+          </div>
+          <select id="inventoryFilter" style="max-width:180px" onchange="renderInventory()">
+            <option value="all">Все</option>
+            <option value="weapon">Зброя</option>
+            <option value="sticker">Стікери</option>
+            <option value="charm">Брелоки</option>
+            <option value="glove">Рукавички</option>
+            <option value="avatar">Аватарки</option>
+            <option value="gold">Голда</option>
+          </select>
+        </div>
+      </div>
 
-<div class="case">
-🎁 Diamond Case (100💰)
-<br>
-<button onclick="openCase(100)">
-Відкрити
-</button>
-</div>
+      <div id="inventoryList" class="inventoryList"></div>
+    </section>
 
-<h2>🎒 Інвентар</h2>
+    <!-- MARKET -->
+    <section id="screen-market" class="screen hidden">
+      <div class="sectionTitle">📈 Ринок</div>
 
-<div id="inventory" class="inventory">
-Порожньо
-</div>
+      <div class="card">
+        <div class="muted tiny">
+          На ринку можна виставляти свої скіни. Максимальна ціна продажу — <b>10 голди</b>.
+          Купівля/продаж працює локально в грі.
+        </div>
+      </div>
 
-<h2>🎟 Промокод</h2>
+      <div class="card">
+        <div class="sectionTitle" style="font-size:16px;margin-top:0">🧾 Мої предмети для продажу</div>
+        <div id="mySellList" class="inventoryList"></div>
+      </div>
 
-<input id="promo" placeholder="Введи код">
-<button onclick="usePromo()">
-Активувати
-</button>
+      <div class="card">
+        <div class="sectionTitle" style="font-size:16px;margin-top:0">🏪 Лоти ринку</div>
+        <div id="marketList" class="marketList"></div>
+      </div>
+    </section>
 
-<script>
+    <!-- CLICKER -->
+    <section id="screen-clicker" class="screen hidden">
+      <div class="sectionTitle">🖱 Клікер</div>
 
-let gold =
-Number(localStorage.getItem("gold")) || 10;
+      <div class="card center">
+        <div style="font-size:18px;font-weight:700">Тисни, щоб фармити голду</div>
+        <div class="muted tiny" style="margin:8px 0 14px">
+          Базово: 1 клік = 0.01 голди • Прокачка: +0.005 за 1 голду
+        </div>
+        <button class="btn gold" style="font-size:22px;padding:18px" onclick="doClick()">💰 + КЛІК</button>
+        <div style="margin-top:12px" class="muted">Поточний дохід за клік: <b id="clickerPowerLabel">0.01</b></div>
+      </div>
 
-let level =
-Number(localStorage.getItem("level")) || 1;
+      <div class="card">
+        <div class="between">
+          <div>
+            <b>Прокачка кліку</b>
+            <div class="muted tiny">Зараз рівень: <span id="clickUpgradeLevel">0</span></div>
+          </div>
+          <button class="btn green inline" onclick="buyClickUpgrade()">+0.005 за 1G</button>
+        </div>
+      </div>
+    </section>
 
-let clickPower =
-Number(localStorage.getItem("clickPower")) || 0.01;
+    <!-- PROMO -->
+    <section id="screen-promo" class="screen hidden">
+      <div class="sectionTitle">🎟 Промокоди</div>
+      <div class="card">
+        <div class="muted tiny" style="margin-bottom:10px">
+          Доступні коди:<br>
+          <b>PRO</b> → +1 голда<br>
+          <b>BSCASE</b> → +10 голди +2% до успіху відкриття<br>
+          <b>PRO48K</b> → код автора +23 голди +4% до успіху відкриття
+        </div>
+        <div class="row">
+          <input id="promoInput" placeholder="Введи промокод">
+          <button class="btn gold inline" style="width:130px" onclick="redeemPromo()">Активувати</button>
+        </div>
+        <div id="promoMsg" class="muted tiny" style="margin-top:10px">Введи код вище</div>
+      </div>
+    </section>
 
-let inventory =
-JSON.parse(localStorage.getItem("inventory")) || [];
+    <!-- PROFILE -->
+    <section id="screen-profile" class="screen hidden">
+      <div class="sectionTitle">👤 Профіль</div>
 
-function save(){
-localStorage.setItem("gold",gold);
-localStorage.setItem("level",level);
-localStorage.setItem("clickPower",clickPower);
-localStorage.setItem("inventory",
-JSON.stringify(inventory));
-update();
-}
+      <div class="card">
+        <div class="profileHead">
+          <div class="avatarBig" id="profileAvatarBig">🎯</div>
+          <div style="flex:1">
+            <div id="profileNick" class="nick">Гравець</div>
+            <div class="muted tiny" id="profileStatusText">Без статусу</div>
+            <div class="wrap" style="margin-top:8px">
+              <span class="tag" id="profileLvlTag">LVL 1</span>
+              <span class="tag" id="profileGoldTag">0 G</span>
+              <span class="tag" id="profileItemsTag">0 предметів</span>
+            </div>
+          </div>
+        </div>
+      </div>
 
-function update(){
-document.getElementById("gold").innerText =
-gold.toFixed(2);
+      <div class="card">
+        <div class="sectionTitle" style="font-size:16px;margin-top:0">✏️ Налаштування</div>
+        <div class="inventoryList">
+          <div>
+            <div class="muted tiny" style="margin-bottom:6px">Нікнейм</div>
+            <input id="nickInput" maxlength="18" placeholder="Твій нік">
+          </div>
+          <div>
+            <div class="muted tiny" style="margin-bottom:6px">Колір ніку</div>
+            <select id="nickColorSelect"></select>
+          </div>
+          <div>
+            <div class="muted tiny" style="margin-bottom:6px">Аватарка</div>
+            <select id="avatarSelect"></select>
+          </div>
+          <button class="btn green" onclick="saveProfile()">Зберегти профіль</button>
+        </div>
+      </div>
 
-document.getElementById("level").innerText =
-level;
+      <div class="card">
+        <div class="sectionTitle" style="font-size:16px;margin-top:0">🧩 Екіпіровка</div>
+        <div class="subgrid">
+          <div>
+            <div class="muted tiny" style="margin-bottom:6px">Зброя для стікера</div>
+            <select id="equipWeaponSelect"></select>
+          </div>
+          <div>
+            <div class="muted tiny" style="margin-bottom:6px">Стікер</div>
+            <select id="equipStickerSelect"></select>
+          </div>
+          <button class="btn small" onclick="applyStickerToWeapon()">Наклеїти стікер</button>
 
-document.getElementById("clickPower").innerText =
-clickPower.toFixed(3);
+          <div>
+            <div class="muted tiny" style="margin-bottom:6px">Зброя для брелока</div>
+            <select id="equipWeaponCharmSelect"></select>
+          </div>
+          <div>
+            <div class="muted tiny" style="margin-bottom:6px">Брелок</div>
+            <select id="equipCharmSelect"></select>
+          </div>
+          <button class="btn small" onclick="attachCharmToWeapon()">Одягнути брелок</button>
+        </div>
+        <div class="muted tiny" style="margin-top:10px">
+          У цій версії стікер/брелок прив’язуються до предмета в інвентарі.
+        </div>
+      </div>
 
-let html="";
+      <div class="card">
+        <div class="sectionTitle" style="font-size:16px;margin-top:0">⚙️ Сервіс</div>
+        <button class="btn red" onclick="resetProgress()">Скинути прогрес</button>
+      </div>
+    </section>
 
-inventory.forEach(item=>{
-html += "<div>"+item+"</div>";
-});
+    <nav class="bottomNav">
+      <button class="navBtn active" data-screen="cases" onclick="switchScreen('cases', this)">🎁<br>Кейси</button>
+      <button class="navBtn" data-screen="shop" onclick="switchScreen('shop', this)">🛒<br>Шоп</button>
+      <button class="navBtn" data-screen="inventory" onclick="switchScreen('inventory', this)">🎒<br>Інв</button>
+      <button class="navBtn" data-screen="market" onclick="switchScreen('market', this)">📈<br>Ринок</button>
+      <button class="navBtn" data-screen="clicker" onclick="switchScreen('clicker', this)">🖱<br>Клік</button>
+      <button class="navBtn" data-screen="profile" onclick="switchScreen('profile', this)">👤<br>Профіль</button>
+    </nav>
+  </div>
 
-if(html=="")
-html="Порожньо";
+  <script>
+    /***********************
+     * BSCASE DATA
+     ***********************/
+    const STORAGE_KEY = "bscase_save_v4";
 
-document.getElementById("inventory").innerHTML =
-html;
-}
-
-function mineGold(){
-gold += clickPower;
-save();
-}
-
-function upgradeClick(){
-
-if(gold>=1){
-gold-=1;
-clickPower+=0.005;
-save();
-}
-}
-
-function openCase(price){
-
-if(gold<price){
-alert("Недостатньо голди!");
-return;
-}
-
-gold-=price;
-
-let rand=Math.random();
-
-let item;
-
-if(rand<0.56){
-
-item="💰 1 Голда";
-
-gold+=1;
-
-}else
-if(rand<0.80){
-
-item="🔫 Common AK47";
-
-}else
-if(rand<0.93){
-
-item="🔫 Rare M4";
-
-}else
-if(rand<0.99){
-
-item="🔪 Epic Knife";
-
-}else
-if(rand<0.99999){
-
-item="💎 Legendary Dragon";
-
-}else{
-
-item="💎 SECRET GOD ITEM";
-}
-
-inventory.push(item);
-
-save();
-
-alert("Випало: "+item);
-}
-
-function usePromo(){
-
-let code =
-document.getElementById("promo").value;
-
-if(code=="PRO"){
-gold+=1;
-}
-
-if(code=="BSCASE"){
-gold+=10;
-}
-
-if(code=="PRO48K"){
-gold+=23;
-}
-
-save();
-}
-
-update();
-
-</script>
-</body>
-</html>
+    const RARITIES = {
+      common:    {name:"Common",    class:"r-common",    color:"#cfd8e6"},
+      uncommon:  {name:"Uncommon",  class:"r-uncommon",  color:"#76ffb1"},
+      rare:      {name:"Rare",      class:"r-rare",      color:"#8bd1ff"},
+      epic:      {name:"Epic",      class:"r-epic",      color:"#dfb2ff"},
+      legendary: {name:"Legendary", class:"r-legendary", col
